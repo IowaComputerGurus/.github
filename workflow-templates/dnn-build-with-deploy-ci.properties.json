@@ -1,0 +1,8 @@
+{
+  "name": "ICG DNN Build With Deploy on PR/Push",
+  "description": "Versions, Builds, and if not a pull request, will deploy generated DNN Extensions based on PRs and pushes to the main branch.  Should be used on the primary branch for CI/CD purposes.",
+  "iconName": "dnn",
+  "categories": [
+      "ASP.NET"
+  ]
+}

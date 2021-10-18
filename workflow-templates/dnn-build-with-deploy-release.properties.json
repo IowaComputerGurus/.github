@@ -1,0 +1,8 @@
+{
+  "name": "ICG DNN Build With Deploy on Verison Tag",
+  "description": "Versions, Builds, and if not a pull request, will deploy generated DNN Extensions when a v* tag is added.  Used for production deployments.",
+  "iconName": "dnn",
+  "categories": [
+      "ASP.NET"
+  ]
+}
