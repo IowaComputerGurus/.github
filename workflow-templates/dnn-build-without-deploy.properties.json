@@ -1,0 +1,8 @@
+{
+  "name": "ICG DNN Build Without Deploy",
+  "description": "This is a template project that will create a GitHub Actions workflow to version & build DNN Platform extensions and collect the results.",
+  "iconName": "dnn",
+  "categories": [
+      "ASP.NET"
+  ]
+}
