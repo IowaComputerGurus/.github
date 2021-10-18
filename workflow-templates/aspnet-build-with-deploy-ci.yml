@@ -1,0 +1,101 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build and Publish
+    env:
+      solution-path: './PATH_TO_SOLUTION.sln'
+      webproject-path: './PATH_TO_WEB_PROJECT.csproj'
+      dataproject-path: './PATH_TO_DATA_PROJECT.csproj'
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Ensure .NET Installed
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        
+    - name: Install EF Tools
+      run: dotnet tool install --global dotnet-ef
+    
+    - name: Install GitVersion
+      run: dotnet tool install --global GitVersion.Tool
+
+    - name: Determine Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.7
+      with:
+        useConfigFile: true 
+      
+    - name: Restore Packages
+      run: dotnet restore "${{ env.solution-path }}"
+    - name: Build
+      run: dotnet build "${{ env.solution-path }}" --no-restore --configuration Release -p:version=${{ steps.gitversion.outputs.majorMinorPatch }}
+    - name: Test
+      run: dotnet test "${{ env.solution-path }}" --no-build --configuration Release
+    - name: Script EF Core
+      run: dotnet ef migrations script -p "${{ env.dataproject-path }}" -o ./deploy-script.sql --configuration Release --startup-project "${{ env.webproject-path }}" -i --no-build
+    - name: Publish
+      run: dotnet publish "${{ env.webproject-path }}" --runtime win-x64 --configuration Release --output ./App --no-restore  -p:version=${{ steps.gitversion.outputs.majorMinorPatch }}
+    - name: Store App Artifacts
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v2
+      with:
+        name: published-app
+        path: App
+        retention-days: 1 # only need long enough to test/validate
+    - name: Store SQL Artifacts
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v2
+      with:
+        name: migration-script
+        path: deploy-script.sql
+        retention-days: 1 # only need long enough to test/validate
+  
+  deploy-staging:
+    needs: [build]
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    name: Deploy to Staging
+    
+    steps:
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      
+    - name: Adjust AppSettings.json
+      uses: microsoft/variable-substitution@v1 
+      with:
+        files: '**/appsettings.json'
+      env:
+        Serilog.WriteTo.0.Args.apiKey: ${{ secrets.TEST_LOGKEY }}
+        Serilog.WriteTo.1.Args.configure.0.Args.path: "../../LogFiles/Application/log.log"    
+    - name: 'Deploy APP to Test Server'
+      uses: azure/webapps-deploy@v2
+      with: 
+        app-name: "[APPNAME]" 
+        publish-profile: ${{ secrets.TEST_PROFILE  }} 
+        package: './published-app/'
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_3RNET_SQL_CREDS }}
+    - name: Apply SQL Migrations
+      uses: Azure/sql-action@v1
+      with:
+        server-name: [FULL_SEVER_NAME]
+        connection-string: ${{ secrets.TEST_DEPLOY_CONNECTION }}
+        # Path to SQL script file to deploy
+        sql-file: ./migration-script/deploy-script.sql
+    
+    
+    
+    
