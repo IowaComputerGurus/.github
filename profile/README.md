@@ -6,4 +6,4 @@ IowaComputerGurus is dedicated to supporting Open Source communities, specifical
 
 ### Looking for Support?
 
-Need some help with our open source modules?  Drop us an email support@iowacomputergurus.com.
+Need some help with our open source modules?  Need help getting something built?  Just want to chat?  Drop us an email support@iowacomputergurus.com.
